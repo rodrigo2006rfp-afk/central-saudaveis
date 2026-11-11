@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Central de Saudáveis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#f3f3f0; --card:#fff; --line:#e3e3dd; --ink:#1c1c1a; --muted:#6b6b66;
+  --green:#1f5c46; --green-h:#17493a; --red:#c62828; --soft:#ecece6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:15px}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;gap:24px;padding-bottom:14px;border-bottom:1px solid #d9d9d3;margin-bottom:20px;flex-wrap:wrap}
+.brand b{display:block;font-family:"Barlow Condensed";font-weight:800;font-size:27px;letter-spacing:.5px;text-transform:uppercase;line-height:1}
+.brand small{display:block;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.tabs{display:flex;background:var(--soft);border-radius:10px;padding:4px;gap:2px}
+.tab{border:0;background:transparent;padding:8px 16px;border-radius:7px;font-weight:600;color:#55554f;cursor:pointer}
+.tab[aria-selected=true]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.status{margin-left:auto;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.dot{width:8px;height:8px;border-radius:50%;background:#bbb}
+.dot.ok{background:#2e7d32}.dot.bad{background:var(--red)}
+.panel{background:var(--card);border:1px solid #dcdcd5;border-radius:14px;padding:16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#55554f;font-weight:500}
+label.f>*{text-transform:none;letter-spacing:0;font-size:15px}
+input[type=text],input[type=date],input:not([type]),select,textarea{border:1px solid #d6d6cf;border-radius:8px;padding:9px 11px;background:#fff;width:100%;color:var(--ink)}
+textarea{resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid #2f6f57;outline-offset:-1px;border-color:transparent}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.btn{border:1px solid #cfcfc8;background:#fff;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f6f6f2}
+.btn.pri{background:var(--green);border-color:var(--green);color:#fff}
+.btn.pri:hover{background:var(--green-h)}
+.btn.danger{color:var(--red)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+.sel-row{display:flex;gap:10px;align-items:flex-end}
+.sel-row label{flex:1;min-width:0}
+h3.cap{margin:0;font-size:13px;letter-spacing:1.4px;text-transform:uppercase;font-weight:500;color:#55554f}
+h2.cap{margin:0;font-family:"Barlow Condensed";font-weight:700;font-size:23px;text-transform:uppercase;letter-spacing:.4px}
+.hint{font-size:13px;color:var(--muted);margin:6px 0 12px;line-height:1.45}
+.head-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+/* items */
+.item{display:grid;grid-template-columns:58px 1fr 26px;gap:10px;background:#f3f3ef;border:1px solid #deded7;border-radius:10px;padding:10px;margin-top:10px}
+.thumb{width:56px;height:56px;border:1px solid #ddd;border-radius:6px;background:#fff center/contain no-repeat;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;text-align:center;line-height:1.1}
+.item .meta{display:flex;flex-direction:column;gap:6px;min-width:0}
+.plu{font-size:12px;letter-spacing:1px;color:#55554f;font-weight:600}
+.plu .warn{color:#b26a00;font-weight:600;letter-spacing:0;margin-left:6px}
+.mini{display:flex;gap:6px}
+.mini>*{flex:1;min-width:0}
+.item .acts{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ic{border:0;background:transparent;cursor:pointer;font-size:14px;color:#55554f;padding:2px}
+.ic:disabled{opacity:.3;cursor:default}
+.ic.x{color:var(--red)}
+.addbox{position:relative}
+.sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #d6d6cf;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.1);z-index:20;max-height:330px;overflow:auto}
+.sugg div{display:flex;gap:10px;align-items:center;padding:7px 10px;cursor:pointer;font-size:14px}
+.sugg div:hover,.sugg div.on{background:#f1f5f2}
+.sugg i{width:34px;height:34px;flex:none;background:#fff center/contain no-repeat;border:1px solid #eee;border-radius:4px}
+.sugg em{font-style:normal;color:var(--muted);font-size:12px}
+.empty{font-size:13px;color:var(--muted);margin-top:12px}
+/* preview */
+.prev-wrap{position:sticky;top:12px}
+.pages{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.pages canvas{width:100%;height:auto;display:block;border:6px solid #e2e2dc;border-radius:6px;background:#fff}
+/* bank */
+.bank{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.pcard{border:1px solid #dcdcd5;border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.pimg{height:200px;background:#fff center/contain no-repeat;border-bottom:1px solid #eee;margin:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#a0a09a;font-size:13px;text-align:center;border-radius:6px}
+.pimg.nofoto{background:#fafaf6;border:2px dashed #d7d7cf}
+.pimg:focus{outline:2px solid #2f6f57}
+.pimg.drag,.drop.drag{background-color:#eef5f0;border-color:#2f6f57}
+.pbody{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.ptop{display:flex;justify-content:space-between;font-size:12px;letter-spacing:.8px}
+.ptop b{font-weight:600}.ptop span{color:var(--muted)}
+.pbody textarea{font-size:14px;min-height:56px}
+.pacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.pacts .btn{padding:6px 10px;font-size:13px}
+.drop{border:2px dashed #d0d0c8;border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;background:#fafaf6;min-height:90px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.drop img{max-height:110px;max-width:100%}
+.drop:focus{outline:2px solid #2f6f57}
+.logos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.logo-box{border:1px solid #d6d6cf;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.logo-box .lg{height:46px;width:100%;background:#f4f4f0 center/contain no-repeat;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#999}
+.sep{border:0;border-top:1px solid #e5e5df;margin:16px 0}
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filters input:not([type=checkbox]){width:300px;max-width:100%}
+.chk{display:flex;gap:6px;align-items:center;font-size:13px;color:#55554f}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1f2a25;color:#fff;padding:11px 18px;border-radius:9px;font-size:14px;z-index:100;box-shadow:0 6px 24px rgba(0,0,0,.2);max-width:90vw}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:90}
+.modal{background:#fff;border-radius:12px;padding:20px;max-width:420px;width:92vw}
+.modal p{margin:0 0 16px;line-height:1.45}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px}
+.notice{background:#fff8e6;border:1px solid #f0dca8;color:#6d5410;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.4;margin-bottom:16px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>Central de Saudáveis</b><small>GPA · Banco de imagens e folhetos</small></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-f" aria-selected="true">Folhetos</button>
+      <button class="tab" role="tab" id="tab-b" aria-selected="false">Banco de imagens</button>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="stat">Conectando…</span></div>
+  </header>
+
+  <div id="nodb" class="notice" hidden>Não foi possível conectar ao banco. Confira se o arquivo <b>config.js</b> tem a URL e a chave do Supabase. Enquanto isso, as alterações não são salvas.</div>
+
+  <!-- FOLHETOS -->
+  <section id="view-f" class="grid2">
+    <div class="col">
+      <div class="panel">
+        <div class="sel-row">
+          <label class="f">Folheto<select id="fSel"></select></label>
+          <button class="btn" id="fNew">Novo</button>
+          <button class="btn" id="fDup">Duplicar</button>
+          <button class="btn danger" id="fDel">Excluir</button>
+        </div>
+        <div id="fEmpty" class="empty" hidden>Nenhum folheto ainda. Clique em <b>Novo</b> para começar.</div>
+        <div class="fields" id="fForm">
+          <label class="f">Título da campanha<input id="fTitulo" placeholder="Momento Saudável"></label>
+          <label class="f">Chamada<input id="fChamada" placeholder="Escolhas leves para o seu dia a dia."></label>
+          <div class="row">
+            <label class="f">Bandeira<select id="fBand"><option value="pa">Pão de Açúcar</option><option value="ex">Extra Mercado</option></select></label>
+            <label class="f">Praça<input id="fPraca" placeholder="SP"></label>
+          </div>
+          <div class="row">
+            <label class="f">Válido de<input type="date" id="fDe"></label>
+            <label class="f">Válido até<input type="date" id="fAte"></label>
+          </div>
+          <div class="row">
+            <label class="f">Itens por página<select id="fPor"><option value="9">9 (3×3)</option><option value="12">12 (3×4)</option><option value="16">16 (4×4)</option><option value="20">20 (4×5)</option></select></label>
+            <label class="f">Formato<select id="fFmt"><option value="digital">Digital vertical 1080×1920</option><option value="a4">A4 impressão</option></select></label>
+          </div>
+          <label class="f">Texto legal do rodapé<textarea id="fLegal" rows="3"></textarea></label>
+        </div>
+      </div>
+
+      <div class="panel" id="itemsPanel">
+        <div class="head-row">
+          <h3 class="cap" id="itCap">Itens · 0 · 1 página</h3>
+          <button class="btn" id="pasteBtn">Colar da planilha</button>
+        </div>
+        <div id="pasteBox" hidden>
+          <p class="hint">Cole as linhas do Excel: <b>PLU · Preço De · Preço Por · Mecânica</b> (opcional: <b>20%</b>, <b>L3P2</b>, <b>2a 50%</b>, <b>CM</b> para Cliente Mais/Clube Extra). PLU que não estiver no banco entra sem foto.</p>
+          <textarea id="pasteTxt" rows="6" placeholder="1153899&#9;29,99&#9;24,99&#10;2254555&#9;11,99&#9;8,99&#10;1002694&#9;21,99&#9;18,69&#9;15%"></textarea>
+          <div style="display:flex;gap:8px;margin:10px 0 12px"><button class="btn pri" id="pasteOk">Adicionar itens</button><button class="btn ghost" id="pasteCancel">Cancelar</button></div>
+        </div>
+        <div class="addbox">
+          <input id="addInp" placeholder="Adicionar produto: digite PLU ou descrição" autocomplete="off">
+          <div class="sugg" id="sugg" hidden></div>
+        </div>
+        <div id="items"></div>
+        <p class="empty" id="itEmpty">Adicione produtos pelo campo acima ou cole da planilha.</p>
+      </div>
+    </div>
+
+    <div class="prev-wrap">
+      <div class="panel">
+        <h3 class="cap" id="pvCap">Prévia · 1 página · 1080×1920</h3>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn" id="dlPng">Baixar PNG</button>
+          <button class="btn pri" id="dlPdf">Baixar PDF</button>
+        </div>
+        <div class="pages" id="pages"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BANCO -->
+  <section id="view-b" hidden>
+    <div class="grid2" style="margin-bottom:20px">
+      <div class="panel">
+        <h2 class="cap">Cadastrar produto</h2>
+        <p class="hint">Preencha o PLU e a descrição e coloque a foto: clique na caixa para escolher o arquivo, arraste a imagem ou copie a foto no site do Pão de Açúcar/Extra e cole aqui com Ctrl+V.</p>
+        <div class="fields" style="margin-top:0">
+          <div class="row">
+            <label class="f">PLU<input id="mPlu" inputmode="numeric"></label>
+            <label class="f">Marca<input id="mMarca"></label>
+          </div>
+          <label class="f">Descrição para o folheto<input id="mDesc"></label>
+          <label class="f">Foto<div class="drop" id="mDrop" tabindex="0">Clique, arraste ou cole (Ctrl+V) a foto</div></label>
+          <input type="file" id="mFile" accept="image/*" hidden>
+          <div><button class="btn pri" id="mSave">Salvar produto</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2 class="cap">Importar PLUs em lote</h2>
+        <p class="hint">Um PLU por linha (pode colar a coluna da planilha). Se vier uma segunda coluna, ela vira a descrição. Os que já estão no banco são pulados. Depois é só colocar as fotos nos cards.</p>
+        <textarea id="bulkTxt" rows="6" placeholder="1153899&#10;1409129&#10;2254555"></textarea>
+        <div style="margin-top:10px"><button class="btn pri" id="bulkOk">Importar</button></div>
+        <hr class="sep">
+        <h3 class="cap">Logos das bandeiras</h3>
+        <p class="hint">Envie o arquivo oficial (PNG com fundo transparente). Sem logo, o folheto mostra o nome da bandeira.</p>
+        <div class="logos">
+          <div class="logo-box"><span class="plu">PÃO DE AÇÚCAR</span><div class="lg" id="lgPa">sem logo</div><div style="display:flex;gap:6px"><button class="btn" data-logo="pa">Enviar</button><button class="btn ghost danger" data-logo-rm="pa">Remover</button></div></div>
+          <div class="logo-box"><span class="plu">EXTRA MERCADO</span><div class="lg" id="lgEx">sem logo</div><div style="display:flex;gap:6px"><button class="btn" data-logo="ex">Enviar</button><button class="btn ghost danger" data-logo-rm="ex">Remover</button></div></div>
+        </div>
+        <input type="file" id="logoFile" accept="image/png,image/webp,image/svg+xml,image/jpeg" hidden>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="head-row">
+        <h2 class="cap" id="bCap">Banco de imagens · 0 produtos</h2>
+        <div class="filters">
+          <label class="chk"><input type="checkbox" id="bSemFoto"> Só sem foto</label>
+          <input id="bFilt" placeholder="Filtrar por PLU, descrição ou marca">
+        </div>
+      </div>
+      <div class="bank" id="bank"></div>
+      <p class="empty" id="bEmpty">O banco está vazio. Cadastre o primeiro produto acima.</p>
+    </div>
+    <input type="file" id="cardFile" accept="image/*" hidden>
+  </section>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const cleanPlu = s => String(s ?? "").replace(/\D/g, "");
+let toastT;
+function toast(msg, ms = 3200){ let t = document.querySelector(".toast"); if(!t){ t = document.createElement("div"); t.className = "toast"; document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); }
+function ask(msg, okLabel = "Excluir"){ return new Promise(res => { const bg = document.createElement("div"); bg.className = "modal-bg"; bg.innerHTML = `<div class="modal"><p>${esc(msg)}</p><div class="acts"><button class="btn" data-a="0">Cancelar</button><button class="btn pri" data-a="1">${esc(okLabel)}</button></div></div>`; bg.onclick = e => { const a = e.target.dataset?.a; if(a !== undefined || e.target === bg){ bg.remove(); res(a === "1"); } }; document.body.appendChild(bg); bg.querySelector('[data-a="1"]').focus(); }); }
+const BAND = { pa: "Pão de Açúcar", ex: "Extra Mercado" };
+const LEGAL = {
+  pa: "Itens sujeitos à disponibilidade de estoque. Ofertas válidas para as lojas Pão de Açúcar da praça indicada ou enquanto durarem os estoques. Descontos não cumulativos com outras campanhas vigentes. Fotos meramente ilustrativas.",
+  ex: "Desconto não cumulativo com demais campanhas vigentes. Ofertas válidas para as lojas Extra Mercado da praça indicada ou enquanto durarem os estoques. Fotos meramente ilustrativas."
+};
+const MECS = b => [["unico","Preço único"],["depor","De / Por"],["clube", b === "ex" ? "Clube Extra" : "Cliente Mais"],["pct","% de desconto"],["leve","Leve X Pague Y"],["seg","% na 2ª unidade"]];
+const fmtD = iso => { if(!iso) return ""; const [y,m,d] = iso.split("-"); return `${d}/${m}`; };
+const todayIso = (add = 0) => { const d = new Date(); d.setDate(d.getDate() + add); return d.toISOString().slice(0,10); };
+
+/* ---------- state ---------- */
+let db = null, assets = null, downloads = true, sb = null;
+const CFG = window.CENTRAL_CONFIG || {};
+const BUCKET = "fotos";
+const products = new Map();       // plu -> {plu, marca, descricao, foto}
+let folhetos = [];                // [{id, ...data}]
+let curId = null, cur = null;     // selected folheto (local working copy)
+let logos = { pa: null, ex: null };
+let localOnly = false;
+
+/* ---------- image cache ---------- */
+const imgCache = new Map();
+function getImg(id){
+  if(!id) return null;
+  let e = imgCache.get(id);
+  if(!e){ const im = new Image(); im.crossOrigin = "anonymous"; e = { im, ok: false, bad: false }; im.onload = () => { e.ok = true; schedRender(); }; im.onerror = () => { e.bad = true; }; im.src = srcOf(id); imgCache.set(id, e); }
+  return e.ok ? e.im : null;
+}
+const localUrls = new Map();
+const srcOf = id => localUrls.get(id) || `${String(CFG.SUPABASE_URL||"").replace(/\/$/,"")}/storage/v1/object/public/${BUCKET}/${encodeURI(id)}`;
+
+/* ---------- connection ---------- */
+function setStat(kind, txt){ $("dot").className = "dot " + (kind || ""); $("stat").textContent = txt; }
+async function boot(){
+  renderAll();
+  const ok = CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && !/COLE_AQUI/.test(CFG.SUPABASE_URL + CFG.SUPABASE_ANON_KEY) && window.supabase;
+  if(!ok){ setStat("bad","Sem banco"); $("nodb").hidden = false; localOnly = true; return; }
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  db = sb; assets = sb; localOnly = false;
+  setStat("","Carregando…");
+  try{ await loadAll(); setStat("ok","Banco conectado"); $("nodb").hidden = true; }
+  catch(e){ console.error(e); setStat("bad","Erro no banco"); $("nodb").hidden = false; localOnly = true; db = assets = null; return; }
+  sb.channel("central").on("postgres_changes", { event: "*", schema: "public" }, onChange).subscribe(st => { if(st === "SUBSCRIBED") setStat("ok","Banco conectado"); });
+  // fallback refresh every 60s in case realtime is off
+  setInterval(() => { if(!document.hidden) loadAll().catch(()=>{}); }, 60000);
+}
+async function fetchAll(table, cols){
+  const out = []; const step = 1000;
+  for(let from = 0; ; from += step){
+    const { data, error } = await sb.from(table).select(cols).range(from, from + step - 1);
+    if(error) throw error; out.push(...data); if(data.length < step) break;
+  }
+  return out;
+}
+async function loadAll(){
+  const [ps, fs, cf] = await Promise.all([fetchAll("produtos","plu,marca,descricao,foto,criado_em"), fetchAll("folhetos","id,data,criado_em"), sb.from("config").select("id,data").eq("id","logos").maybeSingle()]);
+  products.clear(); ps.forEach(r => products.set(r.plu, rowToProd(r)));
+  folhetos = fs.map(r => ({ id: r.id, ...(r.data||{}) })).sort((a,b) => (b.criadoEm||0) - (a.criadoEm||0));
+  if(cf.error) throw cf.error; const v = cf.data?.data || {}; logos = { pa: v.pa || null, ex: v.ex || null };
+  renderLogos(); renderBankSoon(); renderItemsMeta(); onFolhetosChanged(); schedRender();
+}
+const rowToProd = r => ({ plu: r.plu, marca: r.marca || "", descricao: r.descricao || "", foto: r.foto || null, criadoEm: r.criado_em || 0 });
+function onChange(ev){
+  const t = ev.table, n = ev.new, o = ev.old;
+  if(t === "produtos"){ if(ev.eventType === "DELETE") products.delete(o.plu); else products.set(n.plu, rowToProd(n)); renderBankSoon(); renderItemsMeta(); schedRender(); }
+  else if(t === "folhetos"){
+    if(ev.eventType === "DELETE") folhetos = folhetos.filter(f => f.id !== o.id);
+    else { const f = { id: n.id, ...(n.data||{}) }; const i = folhetos.findIndex(x => x.id === n.id); if(i >= 0) folhetos[i] = f; else folhetos.push(f); }
+    folhetos.sort((a,b) => (b.criadoEm||0) - (a.criadoEm||0)); onFolhetosChanged();
+  }
+  else if(t === "config" && n?.id === "logos"){ const v = n.data || {}; logos = { pa: v.pa || null, ex: v.ex || null }; renderLogos(); schedRender(); }
+}
+/* data layer */
+async function dbSetFolheto(id, data){ const { error } = await sb.from("folhetos").upsert({ id, data, criado_em: data.criadoEm || Date.now() }); if(error) throw error; }
+async function dbDelFolheto(id){ const { error } = await sb.from("folhetos").delete().eq("id", id); if(error) throw error; }
+async function dbSetProd(p){ const { error } = await sb.from("produtos").upsert({ plu: p.plu, marca: p.marca || "", descricao: p.descricao || "", foto: p.foto || null, criado_em: p.criadoEm || Date.now() }); if(error) throw error; }
+async function dbDelProd(plu){ const { error } = await sb.from("produtos").delete().eq("plu", plu); if(error) throw error; }
+async function dbSetLogos(v){ const { error } = await sb.from("config").upsert({ id: "logos", data: v }); if(error) throw error; }
+async function stUpload(blob){
+  const ext = (blob.type.split("/")[1] || "png").replace("jpeg","jpg").replace("svg+xml","svg");
+  const path = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, blob, { contentType: blob.type || "image/png", upsert: false });
+  if(error) throw error; return path;
+}
+function stDelete(id){ if(!sb || !id || id.startsWith("local")) return Promise.resolve(); return sb.storage.from(BUCKET).remove([id]).catch(()=>{}); }
+
+/* ---------- folhetos ---------- */
+function blankFolheto(){
+  return { titulo: "Ofertas Saudáveis", chamada: "", bandeira: "pa", praca: "SP", de: todayIso(0), ate: todayIso(6), porPagina: 12, formato: "digital", legal: "", itens: [], criadoEm: Date.now() };
+}
+function labelOf(f){ return `${f.titulo || "Sem título"} · ${BAND[f.bandeira] || ""} · ${fmtD(f.de)}–${fmtD(f.ate)}`; }
+function onFolhetosChanged(){
+  if(curId && !folhetos.find(f => f.id === curId)){ curId = null; cur = null; }
+  if(!curId && folhetos.length){ selectFolheto(folhetos[0].id); return; }
+  // refresh working copy from server if not locally dirty
+  if(curId && !saveTimer && !saving){
+    const f = folhetos.find(x => x.id === curId);
+    const fresh = JSON.parse(JSON.stringify(f)); delete fresh.id;
+    if(JSON.stringify(fresh) !== JSON.stringify(cur)){
+      const ae = document.activeElement; const editing = ae && ($("fForm").contains(ae) || $("items").contains(ae));
+      if(!editing){ cur = fresh; renderForm(); renderItems(); schedRender(); }
+    }
+  }
+  renderSel();
+}
+function selectFolheto(id){
+  curId = id; const f = folhetos.find(x => x.id === id);
+  cur = f ? JSON.parse(JSON.stringify(f)) : null; if(cur) delete cur.id;
+  renderSel(); renderForm(); renderItems(); schedRender();
+}
+let saveTimer = null, saving = false, saveAgain = false;
+function markDirty(){ clearTimeout(saveTimer); saveTimer = setTimeout(flushSave, 600); renderSelLabelOnly(); }
+async function flushSave(){
+  saveTimer = null;
+  if(!cur || !curId) return;
+  if(localOnly || !db){ const i = folhetos.findIndex(f => f.id === curId); if(i>=0) folhetos[i] = { id: curId, ...JSON.parse(JSON.stringify(cur)) }; return; }
+  if(saving){ saveAgain = true; return; }
+  saving = true;
+  try{ await dbSetFolheto(curId, JSON.parse(JSON.stringify(cur))); }
+  catch(e){ console.error(e); toast("Não consegui salvar o folheto. Tente de novo."); }
+  saving = false;
+  if(saveAgain){ saveAgain = false; flushSave(); }
+}
+async function createFolheto(data){
+  const id = "f" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  if(localOnly || !db){ folhetos.unshift({ id, ...data }); selectFolheto(id); return; }
+  try{ await dbSetFolheto(id, data); if(!folhetos.find(f => f.id === id)) folhetos.unshift({ id, ...JSON.parse(JSON.stringify(data)) }); curId = id; cur = JSON.parse(JSON.stringify(data)); renderSel(); renderForm(); renderItems(); schedRender(); }
+  catch(e){ toast("Não consegui criar o folheto."); }
+}
+$("fNew").onclick = () => createFolheto(blankFolheto());
+$("fDup").onclick = () => { if(!cur) return; const c = JSON.parse(JSON.stringify(cur)); c.titulo = (c.titulo || "") + " (cópia)"; c.criadoEm = Date.now(); createFolheto(c); };
+$("fDel").onclick = async () => {
+  if(!curId) return;
+  if(!await ask(`Excluir o folheto "${cur.titulo || "Sem título"}"? Isso não pode ser desfeito.`)) return;
+  const id = curId; clearTimeout(saveTimer); saveTimer = null;
+  if(localOnly || !db){ folhetos = folhetos.filter(f => f.id !== id); curId = null; cur = null; onFolhetosChanged(); renderForm(); renderItems(); schedRender(); return; }
+  try{ await dbDelFolheto(id); folhetos = folhetos.filter(f => f.id !== id); curId = null; cur = null; onFolhetosChanged(); renderForm(); renderItems(); schedRender(); } catch(e){ toast("Não consegui excluir."); }
+};
+$("fSel").onchange = e => { if(saveTimer){ clearTimeout(saveTimer); flushSave(); } selectFolheto(e.target.value); };
+
+function renderSel(){
+  const s = $("fSel");
+  s.innerHTML = folhetos.map(f => `<option value="${esc(f.id)}">${esc(f.id === curId && cur ? labelOf(cur) : labelOf(f))}</option>`).join("");
+  if(curId) s.value = curId;
+  const has = !!cur;
+  $("fEmpty").hidden = has || folhetos.length > 0;
+  $("fForm").style.opacity = has ? 1 : .45; $("fForm").style.pointerEvents = has ? "" : "none";
+  $("itemsPanel").style.opacity = has ? 1 : .45; $("itemsPanel").style.pointerEvents = has ? "" : "none";
+  $("fDup").disabled = $("fDel").disabled = !has;
+}
+function renderSelLabelOnly(){ const o = [...$("fSel").options].find(o => o.value === curId); if(o && cur) o.textContent = labelOf(cur); }
+
+const FORM = { fTitulo:"titulo", fChamada:"chamada", fBand:"bandeira", fPraca:"praca", fDe:"de", fAte:"ate", fPor:"porPagina", fFmt:"formato", fLegal:"legal" };
+function renderForm(){
+  const f = cur || blankFolheto();
+  for(const [id,k] of Object.entries(FORM)) $(id).value = f[k] ?? "";
+  $("fLegal").placeholder = LEGAL[f.bandeira] || LEGAL.pa;
+}
+for(const [id,k] of Object.entries(FORM)){
+  $(id).addEventListener("input", e => {
+    if(!cur) return;
+    cur[k] = k === "porPagina" ? +e.target.value : e.target.value;
+    if(k === "bandeira"){ $("fLegal").placeholder = LEGAL[cur.bandeira]; renderItems(); }
+    markDirty(); schedRender(); renderCaps();
+  });
+}
+
+/* ---------- items ---------- */
+function newItem(plu, extra = {}){
+  return { plu: plu || "", desc: "", mec: "unico", de: "", por: "", pct: "", x: "", y: "", nota: "", ...extra };
+}
+function renderCaps(){
+  const n = cur?.itens?.length || 0; const per = +(cur?.porPagina || 12); const pages = Math.max(1, Math.ceil(n / per));
+  $("itCap").textContent = `Itens · ${n} · ${pages} página${pages>1?"s":""}`;
+  const d = dims(); $("pvCap").textContent = `Prévia · ${pages} página${pages>1?"s":""} · ${cur?.formato === "a4" ? "A4" : d.W + "×" + d.H}`;
+  $("itEmpty").hidden = n > 0;
+}
+function fieldsFor(it){
+  const inp = (k, ph, w) => `<input data-k="${k}" placeholder="${ph}" value="${esc(it[k])}"${w?` style="flex:${w}"`:""}>`;
+  switch(it.mec){
+    case "depor": return `<div class="mini">${inp("de","De R$")}${inp("por","Por R$")}${inp("nota","Nota (ex.: cada, kg)",2)}</div>`;
+    case "clube": return `<div class="mini">${inp("de","Preço normal R$")}${inp("por","Preço clube R$")}${inp("nota","Nota",2)}</div>`;
+    case "pct":   return `<div class="mini">${inp("pct","%")}${inp("de","De R$")}${inp("por","Por R$")}${inp("nota","Nota",2)}</div>`;
+    case "leve":  return `<div class="mini">${inp("x","Leve")}${inp("y","Pague")}${inp("por","Por R$")}${inp("nota","Nota",2)}</div>`;
+    case "seg":   return `<div class="mini">${inp("pct","% na 2ª")}${inp("por","Por R$")}${inp("nota","Nota",2)}</div>`;
+    default:      return `<div class="mini">${inp("por","Por R$")}${inp("nota","Nota (ex.: cada, kg)",2)}</div>`;
+  }
+}
+function renderItems(){
+  const box = $("items"); const its = cur?.itens || []; const b = cur?.bandeira || "pa";
+  box.innerHTML = its.map((it, i) => {
+    const p = products.get(it.plu); const foto = p?.foto;
+    return `<div class="item" data-i="${i}">
+      <div class="thumb" data-photo="${i}" title="${foto ? "Trocar foto" : "Adicionar foto"}" style="${foto ? `background-image:url('${srcOf(foto)}')` : ""}">${foto ? "" : "+ foto"}</div>
+      <div class="meta">
+        <div class="plu">PLU ${esc(it.plu || "—")}${p ? "" : `<span class="warn">fora do banco</span>`}${p && !foto ? `<span class="warn">sem foto</span>` : ""}</div>
+        <input data-k="desc" placeholder="${esc(p?.descricao || "Descrição no folheto")}" value="${esc(it.desc)}">
+        <select data-k="mec">${MECS(b).map(([v,l]) => `<option value="${v}"${it.mec===v?" selected":""}>${l}</option>`).join("")}</select>
+        <div data-f>${fieldsFor(it)}</div>
+      </div>
+      <div class="acts">
+        <button class="ic" data-up="${i}" title="Subir" ${i===0?"disabled":""}>▲</button>
+        <button class="ic" data-down="${i}" title="Descer" ${i===its.length-1?"disabled":""}>▼</button>
+        <button class="ic x" data-rm="${i}" title="Remover">✕</button>
+      </div></div>`;
+  }).join("");
+  renderCaps();
+}
+function renderItemsMeta(){ // refresh thumbs/warnings without clobbering focus
+  const ae = document.activeElement;
+  if(ae && $("items").contains(ae)) { // only update thumbs
+    $("items").querySelectorAll(".item").forEach(el => { const it = cur?.itens?.[+el.dataset.i]; if(!it) return; const foto = products.get(it.plu)?.foto; const th = el.querySelector(".thumb"); th.style.backgroundImage = foto ? `url('${srcOf(foto)}')` : ""; th.textContent = foto ? "" : "+ foto"; });
+    return;
+  }
+  renderItems();
+}
+$("items").addEventListener("input", e => {
+  const el = e.target.closest("[data-k]"); const row = e.target.closest(".item"); if(!el || !row || !cur) return;
+  const it = cur.itens[+row.dataset.i]; const k = el.dataset.k; it[k] = el.value;
+  if(k === "mec"){ row.querySelector("[data-f]").innerHTML = fieldsFor(it); }
+  markDirty(); schedRender();
+});
+$("items").addEventListener("click", e => {
+  const t = e.target; if(!cur) return;
+  const mv = (i, d) => { const a = cur.itens; [a[i], a[i+d]] = [a[i+d], a[i]]; markDirty(); renderItems(); schedRender(); };
+  if(t.dataset.up) mv(+t.dataset.up, -1);
+  else if(t.dataset.down) mv(+t.dataset.down, 1);
+  else if(t.dataset.rm){ cur.itens.splice(+t.dataset.rm, 1); markDirty(); renderItems(); schedRender(); }
+  else if(t.dataset.photo !== undefined){ const it = cur.itens[+t.dataset.photo]; if(!it.plu){ toast("Esse item não tem PLU."); return; } pickPhotoFor(it.plu, it.desc); }
+});
+
+/* add product search */
+let suggIdx = -1, suggList = [];
+function searchProducts(q){
+  q = norm(q).trim(); if(!q) return [];
+  const digits = cleanPlu(q);
+  const res = [];
+  for(const p of products.values()){
+    const hay = norm(`${p.plu} ${p.descricao} ${p.marca}`);
+    if((digits && digits.length >= 2 && p.plu.includes(digits)) || q.split(/\s+/).every(w => hay.includes(w))) res.push(p);
+    if(res.length >= 30) break;
+  }
+  return res.sort((a,b) => (a.plu === digits ? -1 : 0) - (b.plu === digits ? -1 : 0)).slice(0, 8);
+}
+function showSugg(){
+  const q = $("addInp").value; suggList = searchProducts(q); const s = $("sugg");
+  const digits = cleanPlu(q); const exact = digits && /^\s*\d+\s*$/.test(q) && products.has(digits);
+  let html = suggList.map((p, i) => `<div data-s="${i}" class="${i===suggIdx?"on":""}"><i style="${p.foto?`background-image:url('${srcOf(p.foto)}')`:""}"></i><span>${esc(p.descricao || "(sem descrição)")}<br><em>PLU ${esc(p.plu)}${p.marca?" · "+esc(p.marca):""}${p.foto?"":" · sem foto"}</em></span></div>`).join("");
+  if(digits && /^\s*\d+\s*$/.test(q) && !exact) html += `<div data-new="1"><i></i><span>Adicionar PLU ${esc(digits)}<br><em>não está no banco — entra sem foto</em></span></div>`;
+  s.innerHTML = html; s.hidden = !html;
+}
+function addFromProduct(p){ cur.itens.push(newItem(p.plu)); afterAdd(); }
+function afterAdd(){ $("addInp").value = ""; $("sugg").hidden = true; suggIdx = -1; markDirty(); renderItems(); schedRender(); }
+$("addInp").addEventListener("input", () => { suggIdx = -1; showSugg(); });
+$("addInp").addEventListener("keydown", e => {
+  if(e.key === "ArrowDown"){ suggIdx = Math.min(suggIdx + 1, suggList.length - 1); showSugg(); e.preventDefault(); }
+  else if(e.key === "ArrowUp"){ suggIdx = Math.max(suggIdx - 1, -1); showSugg(); e.preventDefault(); }
+  else if(e.key === "Escape"){ $("sugg").hidden = true; }
+  else if(e.key === "Enter"){
+    e.preventDefault(); if(!cur) return;
+    const q = $("addInp").value.trim(); if(!q) return;
+    if(suggIdx >= 0 && suggList[suggIdx]) return addFromProduct(suggList[suggIdx]);
+    const d = cleanPlu(q);
+    if(/^\d+$/.test(q)){ if(products.has(d)) return addFromProduct(products.get(d)); cur.itens.push(newItem(d)); afterAdd(); toast(`PLU ${d} não está no banco — clique em "+ foto" no item para cadastrar a foto.`); return; }
+    if(suggList.length === 1) return addFromProduct(suggList[0]);
+    if(!suggList.length) toast("Nenhum produto encontrado no banco.");
+  }
+});
+$("sugg").addEventListener("mousedown", e => {
+  e.preventDefault(); const r = e.target.closest("[data-s],[data-new]"); if(!r || !cur) return;
+  if(r.dataset.new){ const d = cleanPlu($("addInp").value); cur.itens.push(newItem(d)); afterAdd(); return; }
+  addFromProduct(suggList[+r.dataset.s]);
+});
+$("addInp").addEventListener("blur", () => setTimeout(() => $("sugg").hidden = true, 150));
+
+/* paste from spreadsheet */
+$("pasteBtn").onclick = () => { $("pasteBox").hidden = !$("pasteBox").hidden; if(!$("pasteBox").hidden) $("pasteTxt").focus(); };
+$("pasteCancel").onclick = () => { $("pasteBox").hidden = true; $("pasteTxt").value = ""; };
+function parseMec(s){
+  s = norm(s).replace(/\s+/g, " ").trim(); if(!s) return null;
+  let m;
+  if((m = s.match(/^l\s*(\d+)\s*p\s*(\d+)$/)) || (m = s.match(/leve\s*(\d+)\s*pague\s*(\d+)/))) return { mec: "leve", x: m[1], y: m[2] };
+  if((m = s.match(/^2\s*[aª]?\s*(?:un\w*)?\s*(\d+)\s*%?$/))) return { mec: "seg", pct: m[1] };
+  if((m = s.match(/^(\d+)\s*%$/))) return { mec: "pct", pct: m[1] };
+  if(/^(cm|cliente mais|clube|clube extra|ce)$/.test(s)) return { mec: "clube" };
+  return null;
+}
+$("pasteOk").onclick = () => {
+  if(!cur) return;
+  const lines = $("pasteTxt").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let n = 0, miss = 0;
+  for(const l of lines){
+    const cols = l.split(/\t|;|\s{2,}/).map(c => c.trim());
+    const plu = cleanPlu(cols[0]); if(!plu) continue;
+    const prices = [], rest = [];
+    cols.slice(1).forEach(c => { if(/^(r\$\s*)?\d+[.,]\d{1,2}$/i.test(c)) prices.push(c.replace(/r\$\s*/i,"").replace(".",",")); else if(c) rest.push(c); });
+    const it = newItem(plu);
+    if(prices.length >= 2){ it.de = prices[0]; it.por = prices[1]; it.mec = "depor"; }
+    else if(prices.length === 1){ it.por = prices[0]; }
+    const mec = rest.map(parseMec).find(Boolean);
+    if(mec) Object.assign(it, mec);
+    cur.itens.push(it); n++; if(!products.has(plu)) miss++;
+  }
+  if(!n){ toast("Não encontrei linhas com PLU."); return; }
+  $("pasteTxt").value = ""; $("pasteBox").hidden = true; markDirty(); renderItems(); schedRender();
+  toast(`${n} ite${n>1?"ns adicionados":"m adicionado"}${miss ? ` · ${miss} fora do banco (sem foto)` : ""}.`);
+};
+
+/* ---------- photos / uploads ---------- */
+async function prepImage(file){
+  // downscale big images and keep transparency
+  const url = URL.createObjectURL(file);
+  try{
+    const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const max = 1200, s = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    if(s === 1 && file.size < 1.5e6 && /png|webp|jpeg/.test(file.type)) return file;
+    const c = document.createElement("canvas"); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+    c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+    return await new Promise(res => c.toBlob(b => res(b || file), "image/webp", 0.9));
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadImage(file){
+  if(!file || !/^image\//.test(file.type)){ toast("Escolha um arquivo de imagem."); return null; }
+  const blob = await prepImage(file);
+  if(localOnly || !assets){
+    const id = "local" + Math.random().toString(36).slice(2); localUrls.set(id, URL.createObjectURL(blob)); return id;
+  }
+  try{ const id = await stUpload(blob); localUrls.set(id, URL.createObjectURL(blob)); return id; }
+  catch(e){ console.error(e); toast("Não consegui enviar a foto. Confira o bucket \"fotos\" no Supabase."); return null; }
+}
+async function saveProduct(p){
+  products.set(p.plu, p);
+  if(localOnly || !db){ renderBankSoon(); renderItemsMeta(); schedRender(); return true; }
+  try{ await dbSetProd(p); renderBankSoon(); renderItemsMeta(); schedRender(); return true; }
+  catch(e){ console.error(e); toast("Não consegui salvar o produto."); return false; }
+}
+let pendingPhoto = null;
+function pickPhotoFor(plu, descHint){ pendingPhoto = { plu, descHint }; $("cardFile").value = ""; $("cardFile").click(); }
+async function setPhoto(plu, file, descHint){
+  toast("Enviando foto…", 8000);
+  const id = await uploadImage(file); if(!id) return;
+  const old = products.get(plu);
+  const p = old ? { ...old, foto: id } : { plu, marca: "", descricao: descHint || "", foto: id, criadoEm: Date.now() };
+  if(await saveProduct(p)){ toast("Foto salva."); if(old?.foto && old.foto !== id && assets && !localOnly) stDelete(old.foto); }
+}
+$("cardFile").onchange = e => { const f = e.target.files[0]; if(f && pendingPhoto) setPhoto(pendingPhoto.plu, f, pendingPhoto.descHint); pendingPhoto = null; };
+
+/* manual form */
+let mFileBlob = null;
+function setMFile(f){ if(!f || !/^image\//.test(f.type)){ toast("Isso não é uma imagem."); return; } mFileBlob = f; const u = URL.createObjectURL(f); $("mDrop").innerHTML = `<img src="${u}" alt=""><span>Clique para trocar</span>`; }
+const firstImage = list => [...(list || [])].find(x => (x.type || "").startsWith("image/"));
+$("mDrop").onclick = () => { $("mFile").value = ""; $("mFile").click(); };
+$("mDrop").onkeydown = e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); $("mDrop").click(); } };
+$("mFile").onchange = e => setMFile(e.target.files[0]);
+["dragover","dragenter"].forEach(ev => $("mDrop").addEventListener(ev, e => { e.preventDefault(); $("mDrop").classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => $("mDrop").addEventListener(ev, () => $("mDrop").classList.remove("drag")));
+$("mDrop").addEventListener("drop", e => { e.preventDefault(); const f = firstImage(e.dataTransfer.files); if(f) setMFile(f); else toast("Arraste um arquivo de imagem."); });
+$("mSave").onclick = async () => {
+  const plu = cleanPlu($("mPlu").value); if(!plu){ toast("Informe o PLU."); $("mPlu").focus(); return; }
+  const old = products.get(plu);
+  if(old && !await ask(`O PLU ${plu} já está no banco. Atualizar com estes dados?`, "Atualizar")) return;
+  let foto = old?.foto || null;
+  if(mFileBlob){ toast("Enviando foto…", 8000); const id = await uploadImage(mFileBlob); if(!id) return; if(foto && foto !== id && assets && !localOnly) stDelete(foto); foto = id; }
+  const p = { plu, marca: $("mMarca").value.trim() || old?.marca || "", descricao: $("mDesc").value.trim() || old?.descricao || "", foto, criadoEm: old?.criadoEm || Date.now() };
+  if(await saveProduct(p)){ toast(`Produto ${plu} salvo.`); $("mPlu").value = $("mMarca").value = $("mDesc").value = ""; mFileBlob = null; $("mDrop").textContent = "Clique, arraste ou cole (Ctrl+V) a foto"; $("mPlu").focus(); }
+};
+
+/* global paste: image into focused drop target */
+document.addEventListener("paste", e => {
+  const f = firstImage(Array.from(e.clipboardData?.items || []).filter(i => i.kind === "file").map(i => i.getAsFile()));
+  if(!f) return;
+  const ae = document.activeElement;
+  const card = ae?.closest?.(".pimg");
+  if(card){ e.preventDefault(); setPhoto(card.dataset.plu, f); return; }
+  if(!$("view-b").hidden && (ae === $("mDrop") || $("mDrop").contains(ae) || ["mPlu","mMarca","mDesc"].includes(ae?.id) || ae === document.body)){ e.preventDefault(); setMFile(f); }
+});
+
+/* bulk import */
+$("bulkOk").onclick = async () => {
+  const lines = $("bulkTxt").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let add = 0, skip = 0;
+  for(const l of lines){
+    const cols = l.split(/\t|;/); const plu = cleanPlu(cols[0]); if(!plu) continue;
+    if(products.has(plu)){ skip++; continue; }
+    const ok = await saveProduct({ plu, marca: "", descricao: (cols[1] || "").trim(), foto: null, criadoEm: Date.now() });
+    if(!ok) break; add++;
+  }
+  $("bulkTxt").value = "";
+  toast(`${add} PLU${add!==1?"s":""} importado${add!==1?"s":""}${skip ? ` · ${skip} já estavam no banco` : ""}. Agora coloque as fotos nos cards.`, 5000);
+};
+
+/* logos */
+let logoTarget = null;
+document.querySelectorAll("[data-logo]").forEach(b => b.onclick = () => { logoTarget = b.dataset.logo; $("logoFile").value = ""; $("logoFile").click(); });
+document.querySelectorAll("[data-logo-rm]").forEach(b => b.onclick = async () => { const k = b.dataset.logoRm; if(!logos[k]) return; if(!await ask(`Remover o logo do ${BAND[k]}?`, "Remover")) return; const old = logos[k]; logos[k] = null; await saveLogos(); if(assets && !localOnly) stDelete(old); });
+$("logoFile").onchange = async e => { const f = e.target.files[0]; if(!f || !logoTarget) return; toast("Enviando logo…", 8000); const id = await uploadImage(f); if(!id) return; const old = logos[logoTarget]; logos[logoTarget] = id; await saveLogos(); if(old && assets && !localOnly) stDelete(old); toast("Logo salvo."); };
+async function saveLogos(){ renderLogos(); schedRender(); if(localOnly || !db) return; try{ await dbSetLogos({ pa: logos.pa, ex: logos.ex }); } catch(e){ toast("Não consegui salvar o logo."); } }
+function renderLogos(){ for(const k of ["pa","ex"]){ const el = $(k === "pa" ? "lgPa" : "lgEx"); el.style.backgroundImage = logos[k] ? `url('${srcOf(logos[k])}')` : ""; el.textContent = logos[k] ? "" : "sem logo"; } }
+
+/* ---------- bank grid ---------- */
+let bankT;
+function renderBankSoon(){ clearTimeout(bankT); bankT = setTimeout(renderBank, 60); }
+function renderBank(){
+  const ae = document.activeElement; if(ae && $("bank").contains(ae) && ae.tagName === "TEXTAREA"){ bankT = setTimeout(renderBank, 800); return; }
+  const q = norm($("bFilt").value).trim(); const semFoto = $("bSemFoto").checked;
+  const all = [...products.values()].sort((a,b) => norm(a.descricao || "~").localeCompare(norm(b.descricao || "~")) || a.plu.localeCompare(b.plu));
+  const list = all.filter(p => (!semFoto || !p.foto) && (!q || q.split(/\s+/).every(w => norm(`${p.plu} ${p.descricao} ${p.marca}`).includes(w))));
+  const semN = all.filter(p => !p.foto).length;
+  $("bCap").textContent = `Banco de imagens · ${all.length} produto${all.length!==1?"s":""}${semN ? ` · ${semN} sem foto` : ""}`;
+  $("bEmpty").hidden = list.length > 0; $("bEmpty").textContent = all.length ? "Nenhum produto com esse filtro." : "O banco está vazio. Cadastre o primeiro produto acima.";
+  const shown = list.slice(0, 300);
+  $("bank").innerHTML = shown.map(p => `<div class="pcard">
+    <div class="pimg${p.foto?"":" nofoto"}" tabindex="0" data-plu="${esc(p.plu)}" title="Clique para escolher, arraste ou cole (Ctrl+V) uma foto" style="${p.foto?`background-image:url('${srcOf(p.foto)}')`:""}">${p.foto?"":"Sem foto<br>clique, arraste ou cole"}</div>
+    <div class="pbody">
+      <div class="ptop"><b>PLU ${esc(p.plu)}</b><span>${esc(p.marca)}</span></div>
+      <textarea data-desc="${esc(p.plu)}" rows="2" placeholder="Descrição para o folheto">${esc(p.descricao)}</textarea>
+      <input data-marca="${esc(p.plu)}" placeholder="Marca" value="${esc(p.marca)}" style="font-size:13px;padding:6px 9px">
+      <div class="pacts"><button class="btn" data-troca="${esc(p.plu)}">${p.foto?"Trocar foto":"Enviar foto"}</button><button class="btn danger" data-del="${esc(p.plu)}">Excluir</button></div>
+    </div></div>`).join("") + (list.length > shown.length ? `<p class="empty">Mostrando 300 de ${list.length}. Use o filtro para achar os demais.</p>` : "");
+}
+$("bFilt").addEventListener("input", renderBankSoon);
+$("bSemFoto").addEventListener("change", renderBank);
+$("bank").addEventListener("click", async e => {
+  const t = e.target;
+  if(t.dataset.troca) pickPhotoFor(t.dataset.troca);
+  else if(t.classList.contains("pimg")) pickPhotoFor(t.dataset.plu);
+  else if(t.dataset.del){
+    const p = products.get(t.dataset.del); if(!p) return;
+    if(!await ask(`Excluir o produto PLU ${p.plu} e a foto dele do banco? Isso não pode ser desfeito.`)) return;
+    products.delete(p.plu);
+    if(!localOnly && db){ try{ await dbDelProd(p.plu); if(p.foto && assets) stDelete(p.foto); } catch(err){ toast("Não consegui excluir."); } }
+    renderBank(); renderItemsMeta(); schedRender();
+  }
+});
+$("bank").addEventListener("change", e => {
+  const t = e.target; const plu = t.dataset.desc || t.dataset.marca; if(!plu) return;
+  const p = products.get(plu); if(!p) return;
+  const k = t.dataset.desc ? "descricao" : "marca"; const v = t.value.trim(); if(p[k] === v) return;
+  saveProduct({ ...p, [k]: v });
+});
+$("bank").addEventListener("dragover", e => { const c = e.target.closest(".pimg"); if(c){ e.preventDefault(); c.classList.add("drag"); } });
+$("bank").addEventListener("dragleave", e => { const c = e.target.closest(".pimg"); if(c) c.classList.remove("drag"); });
+$("bank").addEventListener("drop", e => { const c = e.target.closest(".pimg"); if(!c) return; e.preventDefault(); c.classList.remove("drag"); const f = firstImage(e.dataTransfer.files); if(f) setPhoto(c.dataset.plu, f); });
+$("bank").addEventListener("keydown", e => { const c = e.target.closest?.(".pimg"); if(c && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); pickPhotoFor(c.dataset.plu); } });
+
+/* ---------- tabs ---------- */
+function showTab(b){ $("tab-f").setAttribute("aria-selected", !b); $("tab-b").setAttribute("aria-selected", b); $("view-f").hidden = b; $("view-b").hidden = !b; if(b) renderBank(); try{ localStorage.setItem("cs-tab", b ? "b" : "f"); }catch(e){} }
+$("tab-f").onclick = () => showTab(false); $("tab-b").onclick = () => showTab(true);
+
+/* ---------- canvas render ---------- */
+function dims(){ return cur?.formato === "a4" ? { W: 1240, H: 1754 } : { W: 1080, H: 1920 }; }
+let rT; function schedRender(){ clearTimeout(rT); rT = setTimeout(renderPreview, 90); }
+const TH = {
+  pa: { h1: "#0b8a3e", h2: "#0a5f30", stripBg: "#ffffff", stripInk: "#0b6b35", bodyBg: "#f4f4ee", border: "#2f9b46", bw: 3, priceInk: "#111", priceBox: null, badgeBg: "#e30613", badgeInk: "#fff", clubeBg: "#0b6b35", clubeInk: "#fff", pctInk: "#e30613" },
+  ex: { h1: "#e30613", h2: "#b5000e", stripBg: null, stripInk: "#ffffff", bodyBg: "#ffffff", border: "#d0d0d0", bw: 2, priceInk: "#e30613", priceBox: "#ffe100", badgeBg: "#ffe100", badgeInk: "#e30613", clubeBg: "#e30613", clubeInk: "#fff", pctInk: "#e30613" }
+};
+const CF = (w, s) => `${w} ${s}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+const BF = (w, s) => `${w} ${s}px Barlow, Arial, sans-serif`;
+function wrap(ctx, text, maxW){
+  const words = String(text).split(/\s+/).filter(Boolean); const lines = []; let line = "";
+  for(const w of words){ const t = line ? line + " " + w : w; if(ctx.measureText(t).width <= maxW || !line) line = t; else { lines.push(line); line = w; } }
+  if(line) lines.push(line); return lines;
+}
+function fitText(ctx, text, maxW, maxLines, size, minSize, weight, cond = true){
+  let s = size, lines;
+  for(; s >= minSize; s -= 1){ ctx.font = cond ? CF(weight, s) : BF(weight, s); lines = wrap(ctx, text, maxW); if(lines.length <= maxLines && lines.every(l => ctx.measureText(l).width <= maxW)) return { s, lines }; }
+  ctx.font = cond ? CF(weight, minSize) : BF(weight, minSize); lines = wrap(ctx, text, maxW);
+  if(lines.length > maxLines){ lines = lines.slice(0, maxLines); let l = lines[maxLines-1]; while(l.length > 1 && ctx.measureText(l + "…").width > maxW) l = l.slice(0, -1); lines[maxLines-1] = l + "…"; }
+  return { s: minSize, lines };
+}
+function rr(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x+r, y); ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r); ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r); ctx.closePath(); }
+function splitPrice(v){ v = String(v || "").trim().replace(/^r\$\s*/i, ""); if(!v) return null; v = v.replace(/\./g, ","); let [i, c] = v.split(","); i = (i || "0").replace(/\D/g,"") || "0"; c = ((c || "") + "00").replace(/\D/g,"").slice(0, 2); return { i, c }; }
+function drawPrice(ctx, x, yBase, size, p, ink){
+  // returns width
+  const rs = size * 0.26, cs = size * 0.38;
+  ctx.fillStyle = ink; ctx.textBaseline = "alphabetic";
+  ctx.font = CF(700, rs); ctx.fillText("R$", x, yBase - size * 0.56); const rw = ctx.measureText("R$").width + size * 0.05;
+  ctx.font = CF(800, size); ctx.fillText(p.i, x + rw, yBase); const iw = ctx.measureText(p.i).width;
+  ctx.font = CF(800, cs); ctx.fillText("," + p.c, x + rw + iw + size * 0.02, yBase - size * 0.42); const cw = ctx.measureText("," + p.c).width;
+  return rw + iw + cw + size * 0.04;
+}
+function priceWidth(ctx, size, p){ ctx.font = CF(700, size*0.26); const a = ctx.measureText("R$").width + size*0.05; ctx.font = CF(800, size); const b = ctx.measureText(p.i).width; ctx.font = CF(800, size*0.38); return a + b + ctx.measureText("," + p.c).width + size*0.04; }
+
+function drawCard(ctx, it, x, y, w, h, th, band, u){
+  const prod = products.get(it.plu);
+  ctx.save();
+  rr(ctx, x, y, w, h, 14*u); ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = th.bw * u; ctx.strokeStyle = th.border; ctx.stroke();
+  rr(ctx, x, y, w, h, 14*u); ctx.clip();
+  const p = w * 0.055;
+  const desc = (it.desc || prod?.descricao || (it.plu ? "PLU " + it.plu : "")).trim();
+  ctx.fillStyle = "#111"; ctx.textBaseline = "top";
+  const ft = fitText(ctx, desc, w - 2*p, 3, Math.round(w*0.085), Math.round(w*0.058), 700);
+  ft.lines.forEach((l, i) => ctx.fillText(l, x + p, y + p + i * ft.s * 1.08));
+  const descBottom = y + p + ft.lines.length * ft.s * 1.08;
+
+  const pr = splitPrice(it.por);
+  let size = Math.min(h * 0.21, w * 0.23);
+  const leftW = w * 0.56;
+  if(pr){ const pw = priceWidth(ctx, size, pr); if(pw > leftW - p) size *= (leftW - p) / pw; }
+  const baseY = y + h - p - size * 0.06;
+  const priceTop = baseY - size * 0.86;
+  const hasDe = ["depor","pct","clube"].includes(it.mec) && splitPrice(it.de);
+
+  // image
+  const img = prod?.foto ? getImg(prod.foto) : null;
+  const ix = x + w * 0.40, iy = descBottom + p * 0.4, iw = x + w - p - ix, ih = y + h - p - iy;
+  if(img && iw > 10 && ih > 10){
+    const s = Math.min(iw / img.naturalWidth, ih / img.naturalHeight); const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+    ctx.drawImage(img, ix + (iw - dw) / 2, iy + (ih - dh), dw, dh);
+  } else if(!prod?.foto && iw > 10 && ih > 10){
+    ctx.strokeStyle = "#e2e2e2"; ctx.setLineDash([6*u, 5*u]); ctx.lineWidth = 2*u; rr(ctx, ix, iy, iw, ih, 8*u); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#bdbdbd"; ctx.font = BF(500, Math.round(w*0.045)); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("sem foto", ix + iw/2, iy + ih/2); ctx.textAlign = "left";
+  }
+
+  // badges
+  const badgeR = w * 0.15;
+  const cyBadge = Math.max(descBottom + badgeR + p*0.3, (hasDe ? priceTop - size*0.62 : priceTop) - badgeR - p * 0.25);
+  if((it.mec === "pct" || it.mec === "seg") && String(it.pct).trim()){
+    const cx = x + p + badgeR, cy = cyBadge;
+    ctx.beginPath(); ctx.arc(cx, cy, badgeR, 0, Math.PI*2); ctx.fillStyle = th.badgeBg; ctx.fill();
+    ctx.fillStyle = th.badgeInk; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    const pct = String(it.pct).replace(/[^\d,.]/g,"") + "%";
+    ctx.font = CF(800, badgeR * 0.78); ctx.fillText(pct, cx, cy + badgeR * 0.12);
+    ctx.font = BF(700, badgeR * 0.25);
+    if(it.mec === "pct") ctx.fillText("de desconto", cx, cy + badgeR * 0.5);
+    else { ctx.fillText("na 2ª", cx, cy + badgeR * 0.45); ctx.fillText("unidade", cx, cy + badgeR * 0.73); }
+    ctx.textAlign = "left";
+  } else if(it.mec === "leve" && (it.x || it.y)){
+    const bh = badgeR * 1.55; ctx.font = CF(800, bh * 0.34);
+    const bw = Math.max(ctx.measureText(`LEVE ${it.x || "?"}`).width, ctx.measureText(`PAGUE ${it.y || "?"}`).width) + bh * 0.4, bx = x + p, by = cyBadge - bh/2;
+    rr(ctx, bx, by, bw, bh, 8*u); ctx.fillStyle = th.badgeBg; ctx.fill();
+    ctx.fillStyle = th.badgeInk; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`LEVE ${it.x || "?"}`, bx + bw/2, by + bh*0.3); ctx.fillText(`PAGUE ${it.y || "?"}`, bx + bw/2, by + bh*0.7); ctx.textAlign = "left";
+  } else if(it.mec === "clube"){
+    const label = band === "ex" ? "Clube Extra" : "Cliente Mais";
+    ctx.font = CF(700, w * 0.06); const tw = ctx.measureText(label).width; const bh = w * 0.085, bx = x + p, by = (hasDe ? priceTop - size*0.62 - (th.priceBox ? size*0.12 : 0) : priceTop - (th.priceBox ? size*0.1 : 0)) - bh - p*0.3;
+    rr(ctx, bx, by, tw + w*0.06, bh, bh/2); ctx.fillStyle = th.clubeBg; ctx.fill();
+    ctx.fillStyle = th.clubeInk; ctx.textBaseline = "middle"; ctx.fillText(label, bx + w*0.03, by + bh/2 + 1);
+  }
+
+  // de / por
+  if(hasDe){
+    const de = splitPrice(it.de); const fs = Math.max(size * 0.27, w*0.045);
+    ctx.textBaseline = "alphabetic"; ctx.fillStyle = "#222";
+    const off = th.priceBox ? size * 0.12 : 0;
+    const y1 = priceTop - size * 0.3 - off, y2 = priceTop - size * 0.02 - off;
+    ctx.font = CF(700, fs); ctx.fillText("De:", x + p, y1); const lw = ctx.measureText("De: ").width;
+    const deTxt = `R$ ${de.i},${de.c}`; ctx.font = CF(600, fs); ctx.fillText(deTxt, x + p + lw, y1);
+    const dw = ctx.measureText(deTxt).width; ctx.fillRect(x + p + lw, y1 - fs * 0.32, dw, Math.max(1.5, fs * 0.08));
+    ctx.font = CF(700, fs); ctx.fillText("Por:", x + p, y2);
+  }
+  // price
+  if(pr){
+    const ink = it.mec === "pct" && band === "pa" ? th.pctInk : th.priceInk;
+    if(th.priceBox){ const pw = priceWidth(ctx, size, pr); rr(ctx, x + p - size*0.08, priceTop - size*0.08, pw + size*0.16, size*1.0, 6*u); ctx.fillStyle = th.priceBox; ctx.fill(); }
+    const pw = drawPrice(ctx, x + p, baseY, size, pr, ink);
+    if(it.nota){
+      ctx.fillStyle = "#333"; ctx.font = BF(600, Math.max(w*0.042, size*0.2)); ctx.textBaseline = "alphabetic";
+      const nx = x + p + pw + size * (th.priceBox ? 0.2 : 0.1); const nm = x + w - p - nx;
+      const nt = fitText(ctx, it.nota.toUpperCase(), Math.max(nm, w*0.25), 1, Math.round(Math.max(w*0.042, size*0.2)), Math.round(w*0.03), 600, false);
+      ctx.fillStyle = "#333"; ctx.fillText(nt.lines[0], nm > w*0.2 ? nx : x + p, nm > w*0.2 ? baseY : baseY - size * 1.05);
+    }
+  } else {
+    ctx.fillStyle = "#c0c0c0"; ctx.font = BF(500, w*0.045); ctx.textBaseline = "alphabetic"; ctx.fillText("preço?", x + p, baseY);
+  }
+  ctx.restore();
+}
+
+function drawPage(canvas, pageIdx, pages){
+  const f = cur || blankFolheto(); const { W, H } = dims(); const u = W / 1080; const band = f.bandeira === "ex" ? "ex" : "pa"; const th = TH[band];
+  canvas.width = W; canvas.height = H; const ctx = canvas.getContext("2d");
+  ctx.fillStyle = th.bodyBg; ctx.fillRect(0, 0, W, H);
+  const pad = 30 * u;
+  // header
+  const logoW = 230 * u, logoH = 110 * u;
+  ctx.font = CF(800, 66*u);
+  const tt = fitText(ctx, (f.titulo || "").toUpperCase(), W - 2*pad - logoW - 20*u, 2, Math.round(70*u), Math.round(46*u), 800);
+  const titleH = tt.lines.length * tt.s * 1.0;
+  const chamH = f.chamada ? 44 * u : 0;
+  const stripH = 52 * u;
+  let headerH = Math.max(pad*1.3 + titleH + chamH + pad*1.1, 200*u);
+  const exStrip = band === "ex";
+  const fullHeader = headerH + (exStrip ? stripH : 0);
+  const g = ctx.createLinearGradient(0, 0, 0, fullHeader); g.addColorStop(0, th.h1); g.addColorStop(1, th.h2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, fullHeader);
+  ctx.fillStyle = "#fff"; ctx.textBaseline = "top"; ctx.font = CF(800, tt.s);
+  tt.lines.forEach((l, i) => ctx.fillText(l, pad, pad*1.1 + i * tt.s * 1.0));
+  if(f.chamada){ ctx.font = CF(600, 32*u); const ch = fitText(ctx, f.chamada, W - 2*pad - logoW, 1, Math.round(34*u), Math.round(22*u), 600); ctx.fillStyle = "#fff"; ctx.fillText(ch.lines[0], pad, pad*1.1 + titleH + 18*u); }
+  // logo
+  const lid = logos[band]; const limg = lid ? getImg(lid) : null;
+  if(limg){ const s = Math.min(logoW / limg.naturalWidth, logoH / limg.naturalHeight); const dw = limg.naturalWidth*s, dh = limg.naturalHeight*s; ctx.drawImage(limg, W - pad - dw, pad, dw, dh); }
+  else { ctx.fillStyle = "#fff"; ctx.textAlign = "right"; ctx.font = CF(800, 34*u); const nm = BAND[band].toUpperCase().split(" "); nm.forEach((w, i) => ctx.fillText(w, W - pad, pad + i * 34*u)); ctx.textAlign = "left"; }
+  // strip
+  const vtxt = `OFERTAS VÁLIDAS DE ${fmtD(f.de)} A ${fmtD(f.ate)}${f.ate ? "/" + f.ate.slice(0,4) : ""}${f.praca ? " · " + f.praca.toUpperCase() : ""}`;
+  let sy = headerH;
+  if(!exStrip){ ctx.fillStyle = th.stripBg; ctx.fillRect(0, sy, W, stripH); }
+  ctx.fillStyle = th.stripInk; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = CF(700, 26*u); ctx.fillText(vtxt, W/2, sy + stripH/2 + 1*u); ctx.textAlign = "left";
+  // legal
+  const legal = (f.legal || "").trim() || LEGAL[band];
+  ctx.font = BF(400, 18*u); const lg = fitText(ctx, legal, W - 2*pad, 3, Math.round(19*u), Math.round(14*u), 400, false);
+  const footerH = lg.lines.length * lg.s * 1.3 + pad * 1.2;
+  ctx.fillStyle = "#555"; ctx.textBaseline = "top"; lg.lines.forEach((l, i) => ctx.fillText(l, pad, H - footerH + pad*0.5 + i * lg.s * 1.3));
+  if(pages > 1){ ctx.textAlign = "right"; ctx.font = BF(600, 16*u); ctx.fillStyle = "#888"; ctx.fillText(`${pageIdx+1}/${pages}`, W - pad, H - 26*u); ctx.textAlign = "left"; }
+  // grid
+  const per = +(f.porPagina || 12); const [cols, rows] = { 9:[3,3], 12:[3,4], 16:[4,4], 20:[4,5] }[per] || [3,4];
+  const gx = pad * 0.6, gTop = sy + stripH + 20*u, gBot = H - footerH, gap = 14*u;
+  const cw = (W - 2*gx - gap*(cols-1)) / cols, chh = (gBot - gTop - gap*(rows-1)) / rows;
+  const its = (f.itens || []).slice(pageIdx * per, pageIdx * per + per);
+  its.forEach((it, i) => { const c = i % cols, r = Math.floor(i / cols); drawCard(ctx, it, gx + c*(cw+gap), gTop + r*(chh+gap), cw, chh, th, band, u); });
+}
+function pageCount(){ const n = cur?.itens?.length || 0; return Math.max(1, Math.ceil(n / +(cur?.porPagina || 12))); }
+function renderPreview(){
+  const n = pageCount(); const box = $("pages");
+  while(box.children.length > n) box.lastChild.remove();
+  while(box.children.length < n){ const c = document.createElement("canvas"); box.appendChild(c); }
+  [...box.children].forEach((c, i) => { c.setAttribute("aria-label", "Página " + (i+1)); drawPage(c, i, n); });
+  renderCaps();
+}
+
+/* ---------- downloads ---------- */
+const slug = () => (norm(cur?.titulo || "folheto").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "folheto");
+async function saveFile(filename, data){
+  try{
+    const blob = data instanceof Blob ? data : new Blob([data], { type: filename.endsWith(".pdf") ? "application/pdf" : "application/octet-stream" });
+    const u = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000); await new Promise(r => setTimeout(r, 350)); return true;
+  }catch(e){ toast("Não consegui baixar o arquivo."); return false; }
+}
+function pageBlobs(type, q){
+  const n = pageCount(); const out = [];
+  return (async () => { for(let i = 0; i < n; i++){ const c = document.createElement("canvas"); drawPage(c, i, n); out.push(await new Promise((res, rej) => { try{ c.toBlob(b => b ? res({ b, c }) : rej(), type, q); } catch(err){ rej(err); } })); } return out; })();
+}
+async function waitImages(){ const ids = [logos.pa, logos.ex, ...(cur?.itens || []).map(it => products.get(it.plu)?.foto)].filter(Boolean); ids.forEach(getImg); const t0 = Date.now(); while(Date.now() - t0 < 4000 && ids.some(id => { const e = imgCache.get(id); return e && !e.ok && !e.bad; })) await new Promise(r => setTimeout(r, 120)); }
+$("dlPng").onclick = async () => {
+  if(!cur) return; await fontsReady; await waitImages();
+  try{
+    const bl = await pageBlobs("image/png");
+    for(let i = 0; i < bl.length; i++){ const ok = await saveFile(`${slug()}${bl.length>1?`-pag${i+1}`:""}.png`, bl[i].b); if(!ok) break; }
+  }catch(e){ toast("Não consegui gerar a imagem."); }
+};
+$("dlPdf").onclick = async () => {
+  if(!cur) return; if(!window.jspdf){ toast("Gerador de PDF não carregou. Recarregue a página."); return; }
+  await fontsReady; await waitImages();
+  try{
+    const bl = await pageBlobs("image/jpeg", 0.92); const a4 = cur.formato === "a4"; const { W, H } = dims();
+    const pdf = a4 ? new jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" }) : new jspdf.jsPDF({ unit: "px", format: [W, H], orientation: "portrait", hotfixes: ["px_scaling"] });
+    for(let i = 0; i < bl.length; i++){
+      if(i) a4 ? pdf.addPage("a4", "portrait") : pdf.addPage([W, H], "portrait");
+      const url = bl[i].c.toDataURL("image/jpeg", 0.92);
+      a4 ? pdf.addImage(url, "JPEG", 0, 0, 210, 297) : pdf.addImage(url, "JPEG", 0, 0, W, H);
+    }
+    await saveFile(`${slug()}.pdf`, pdf.output("arraybuffer"));
+  }catch(e){ toast("Não consegui gerar o PDF."); }
+};
+
+/* ---------- init ---------- */
+function renderAll(){ renderSel(); renderForm(); renderItems(); renderLogos(); renderBank(); schedRender(); }
+const fontsReady = (document.fonts ? Promise.all(["800 40px 'Barlow Condensed'","700 40px 'Barlow Condensed'","600 40px 'Barlow Condensed'","400 20px Barlow","600 20px Barlow"].map(f => document.fonts.load(f).catch(()=>{}))).then(() => document.fonts.ready) : Promise.resolve()).then(() => schedRender());
+try{ if(localStorage.getItem("cs-tab") === "b") showTab(true); }catch(e){}
+boot();
+})();
+</script>
+</body>
+</html>
